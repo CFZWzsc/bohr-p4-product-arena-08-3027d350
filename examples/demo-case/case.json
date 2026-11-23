@@ -1,0 +1,25 @@
+{
+ "case_id": "demo-product-arena-08-3027d350",
+ "topic_id": "product-arena-08-3027d350",
+ "topic_title": "阅读01｜文献文档解析",
+ "difficulty": 2,
+ "domain": "reading",
+ "task_instruction": "演示用例：请把同目录下的合成论文材料解析为结构化结果，覆盖正文、章节层级、表格、公式、图表与参考文献，并给出页码/段落定位；读不出或无法判断的部分写入 uncertainties。",
+ "output_contract": {
+  "case_id": "原样保留",
+  "case_identifiers": "输入标识 :: `case_id`、`paper_id`、`material_version` 与本次输入一致。 | 子字段: case_id, material_version, paper_id",
+  "sections": "章节层级 :: 逐节给出编号、标题、层级、起始页码与段落范围；保持原文顺序。",
+  "text_blocks": "正文文字块 :: 按阅读顺序输出正文文字块，每块含文本、页码/区块定位与版式角色（正文/题注/脚注/页眉页脚）。",
+  "tables": "表格结构 :: 每张表给出表 id、所在页码、行、列、合并单元格、多层表头与单元格原文。",
+  "figures": "图表定位 :: 每张图/表给出编号、题注原文与所在页码/区块；图内文字不可读时标注。",
+  "formulas": "公式 :: 按公式编号给出原文、符号与上下标说明，保留希腊字母。",
+  "claims": "每条关键结论附 kind、evidence、source_id、location",
+  "evidence": "证据与来源定位 :: 页码、段落、图表、表格单元格或公式位置；引文为原文逐字片段。",
+  "coverage": "解析覆盖 :: `coverage` 说明已读页/章节、未读部分及原因；实际读取情况结合运行记录核验。",
+  "status": "answered|partial|insufficient_evidence|unsupported",
+  "uncertainties": "未报告、无法判断、冲突和人工复核项"
+ },
+ "evaluation": {
+  "mode": "demo"
+ }
+}
