@@ -66,6 +66,47 @@ def contract_names(case):
     return out
 
 
+ALIASES = {
+    "document": "bundle", "doc": "bundle", "structure": "bundle",
+    "parsed": "bundle", "parsed_document": "bundle", "pdf_structure": "bundle",
+    "full_text": "full_text", "text": "full_text", "content": "full_text",
+    "references": "references_region", "bibliography": "references_region",
+    "reference_region": "references_region",
+    "figures": "figures", "tables": "tables",
+    "evidence": "anchors", "anchors": "anchors", "locators": "anchors",
+    "page_count": "page_count", "num_pages": "page_count",
+}
+
+
+def resolve_alias(key, values):
+    """Map structural synonyms onto values the skill really produced."""
+    if key == "bundle":
+        return {"pages": values.get("pages"), "sections": values.get("sections")}
+    if key == "full_text":
+        return "\n".join(p.get("text", "") for p in values.get("pages", []))
+    if key == "references_region":
+        return values.get("references_region")
+    if key == "page_count":
+        return values.get("stats", {}).get("page_count")
+    if key == "figures":
+        return [c for c in values.get("captions", []) if c.get("kind") == "figure_caption"]
+    if key == "tables":
+        return [c for c in values.get("captions", []) if c.get("kind") == "table_caption"]
+    if key == "anchors":
+        anchors = []
+        for section in values.get("sections", []):
+            anchors.append({"kind": "section", "page": section["page"],
+                            "block_id": section["block_id"]})
+        for caption in values.get("captions", []):
+            anchors.append({"kind": caption["kind"], "page": caption["page"],
+                            "block_id": caption["block_id"]})
+        for formula in values.get("formula_numbers", []):
+            anchors.append({"kind": "formula", "page": formula["page"],
+                            "block_id": formula["block_id"]})
+        return anchors
+    return None
+
+
 def fill_contract(case, values):
     """Guarantee every original contract field survives, with honest values."""
     notes = {}
@@ -73,6 +114,11 @@ def fill_contract(case, values):
     for name in contract_names(case):
         if name in values:
             out[name] = values[name]
+            continue
+        alias = ALIASES.get(name.strip().lower())
+        mapped = resolve_alias(alias, values) if alias else None
+        if mapped is not None:
+            out[name] = mapped
         else:
             out[name] = None
             notes[name] = "field declared by output_contract but not mapped by this skill; kept as null"
@@ -477,7 +523,7 @@ def parse_pdf(path, raw):
 
 
 def structure_pages(pages):
-    sections, captions, formulas, footnotes = [], [], [], []
+    sections, captions, formulas, footnotes, references = [], [], [], [], []
     in_references = False
     heading_stack = []
     all_sizes = [b["size"] for p in pages for b in p["blocks"]]
@@ -517,7 +563,9 @@ def structure_pages(pages):
             elif kind == "footnote":
                 footnotes.append({"text": text, "page": blk["page"],
                                   "block_id": blk["block_id"]})
-    return sections, captions, formulas, footnotes
+            elif kind == "reference":
+                references.append({"page": blk["page"], "block_id": blk["block_id"]})
+    return sections, captions, formulas, footnotes, references
 
 
 def pages_from_structured(obj):
@@ -601,7 +649,9 @@ def main(argv=None):
                     raw = fh.read()
             except OSError as exc:
                 errors.append({"code": "pdf_unreadable", "path": path, "message": str(exc)})
-                uncertainty.append("PDF not readable: " + os.path.basename(path))
+                uncertainty.append({"item": "pdf_unreadable",
+                                    "detail": os.path.basename(path),
+                                    "path": path})
                 continue
             sources.append({"path": os.path.basename(path), "bytes": len(raw),
                             "sha256": sha256_bytes(raw)})
@@ -619,7 +669,9 @@ def main(argv=None):
                     b["page"] = p["page"]
                 pages.append(p)
             if not parsed:
-                uncertainty.append("no page objects parsed from " + os.path.basename(path))
+                uncertainty.append({"item": "pages_unparsed",
+                                    "detail": "no page objects parsed",
+                                    "path": os.path.basename(path)})
 
         if not pages:
             structured = pages_from_structured(case)
@@ -629,13 +681,15 @@ def main(argv=None):
                                 "bytes": None, "sha256": None})
                 limitations.append("no PDF found; used structured page text supplied in case")
             else:
-                uncertainty.append("no PDF and no structured page text found in case")
+                uncertainty.append({"item": "input",
+                                    "detail": "no PDF and no structured page text found in case"})
 
-        sections, captions, formulas, footnotes = structure_pages(pages)
+        sections, captions, formulas, footnotes, references = structure_pages(pages)
         empty_pages = [p["page"] for p in pages if not p["blocks"]]
         if empty_pages:
-            uncertainty.append("pages without extractable text: " + str(empty_pages) +
-                               " (may need OCR)")
+            uncertainty.append({"item": "ocr_needed",
+                                "detail": "pages without extractable text",
+                                "pages": empty_pages})
         if pages and any(p.get("two_column") for p in pages):
             limitations.append("two-column reading order is heuristic (coordinate clustering)")
         limitations.append("glyphs decoded as latin-1 bytes when no ToUnicode map is applied; "
@@ -651,8 +705,10 @@ def main(argv=None):
             "captions": captions,
             "formula_numbers": formulas,
             "footnotes": footnotes,
+            "references_region": references,
             "result": {"pages": pages, "sections": sections, "captions": captions,
-                       "formula_numbers": formulas, "footnotes": footnotes},
+                       "formula_numbers": formulas, "footnotes": footnotes,
+                       "references_region": references},
             "sources": sources,
             "uncertainty": uncertainty,
             "limitations": limitations,
