@@ -1,0 +1,63 @@
+{
+  "_comment": [
+    "阶段 B 的判断文件模板。复制到 /app/work/agent_judgement.json 后按实际材料填写。",
+    "quote 必须是材料里的逐字片段 —— 脚本会逐条校验，找不到就退回。",
+    "case_id 必须与 /input/case.json 里的 case_id 一致。",
+    "本题示例为合成材料，不是正式案例结果。"
+  ],
+  "case_id": "demo-product-arena-08-3027d350",
+  "claims": [
+    {
+      "text": "The synthetic electrode retained 92 % of its initial capacity after 500 cycles at 1 A/g.",
+      "kind": "reported",
+      "evidence": [
+        {"paragraph_id": "P002", "quote": "retained 92 % of its initial capacity after 500 cycles at 1 A/g"}
+      ]
+    },
+    {
+      "text": "Table 1 reports a mass loading of 2.5 mg/cm2 for Sample A.",
+      "kind": "reported",
+      "evidence": [
+        {"paragraph_id": "P008", "quote": "Sample A: 2.5 mg/cm2"}
+      ]
+    }
+  ],
+  "answers": [
+    {
+      "question": "What capacity retention and cycling conditions are reported?",
+      "answer": "92 % of the initial capacity after 500 cycles at 1 A/g.",
+      "evidence": [
+        {"paragraph_id": "P002", "quote": "retained 92 % of its initial capacity after 500 cycles at 1 A/g"}
+      ]
+    }
+  ],
+  "deliverable": "Structured parse: Abstract, Section 2 Results, Section 3 Discussion and References are recovered in reading order; Table 1 gives Sample A = 2.5 mg/cm2 and Sample B = 3.1 mg/cm2; Equation (1) is preserved as C = I / (m ΔV); Figure 1 is located on page 1 with its caption.",
+  "contract_fields": {
+    "sections": [
+      {"id": "Abstract", "title": "Abstract", "level": 1, "start_page": 1},
+      {"id": "2", "title": "2. Results", "level": 1, "start_page": 1},
+      {"id": "3", "title": "3. Discussion", "level": 1, "start_page": 2},
+      {"id": "References", "title": "References", "level": 1, "start_page": 2}
+    ],
+    "tables": [
+      {"table_id": "Table 1", "page": 1, "caption": "Sample names and mass loadings.",
+       "cells": [{"row": 1, "column": "Sample A", "text": "2.5 mg/cm2"},
+                 {"row": 1, "column": "Sample B", "text": "3.1 mg/cm2"}]}
+    ],
+    "figures": [
+      {"figure_id": "Figure 1", "page": 1, "caption": "Figure 1 presents the cycling stability of the electrode."}
+    ],
+    "formulas": [
+      {"formula_id": "Equation (1)", "text": "C = I / (m ΔV)", "page": 1,
+       "note": "ΔV preserved from the source; no semantic rewriting."}
+    ]
+  },
+  "uncertainties": [
+    {
+      "kind": "figure_content_not_available",
+      "item": "Figure 1",
+      "detail": "Only the caption text is present in the synthetic material; the plotted data points are not provided.",
+      "resolution": "Located the figure and its caption; did not infer any plotted values."
+    }
+  ]
+}
